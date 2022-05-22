@@ -73,173 +73,84 @@ public class SeamCarver {
         return new int[0];
     }
 
-    private PixelGraph horizontalPixelGraph() {
-        // Add vertices to graph
-        PixelGraph graph = loadPixelVertices();
-
-        // Add all connecting edges
-        graph.getAdjVertices().forEach((k, v) -> {
-            int x = k.getX(), y = k.getY();
-            if (x < width() - 1) {
-                graph.addEdge(k, new PixelVertex(x+1, y, energy(x, y+1)));
-                if (y > 0) {
-                    graph.addEdge(k, new PixelVertex(x+1, y-1, energy(x-1, y)));
-                }
-                if (y < height() - 1) {
-                    graph.addEdge(k, new PixelVertex(x+1, y+1, energy(x+1, y)));
-                }
-            }
-        });
-
-        return graph;
-    }
-
     public int[] findVerticalSeam() {
-        // Topological sort the pixel graph
-        // Generate vertical pixel graph
-        PixelGraph graph = verticalPixelGraph();
-        System.out.println("Graph creation complete.");
 
-        // Topologically sort pixel graph
-        PixelVertex[] topSort = verticalTopSort();
-        System.out.println("Topological sort complete.");
-
-        // Find shortest path given topological sort
-        // Create array for shortest path from each of the possible sources (the entire top row)
-        ShortestPathReturn[] sourcePaths = new ShortestPathReturn[width()];
-        for (int source = 0; source < width(); source++) {
-            sourcePaths[source] = singleSourceShortestPath(topSort, graph, source);
-            System.out.println("Source " + source + " evaluated.");
-        }
-        System.out.println("Path array created.");
-
-        // Find minimum path size by looping through last width() of each of the distances
-        double minimumPathSize = Double.MAX_VALUE;
-        int minimumPathSourceIndex = -1;
-        int minimumPathFinalIndex = -1;  // Index in the topSort, not the row index
-        for (int sourceIndex = 0; sourceIndex < sourcePaths.length; sourceIndex++) {
-            for (int finalIndex = topSort.length - width(); finalIndex < topSort.length; finalIndex++) {
-                // Total distance has to take into account energy of source pixel
-                double distance = sourcePaths[sourceIndex].distances[finalIndex] + energy(sourceIndex, 0);
-                if (distance < minimumPathSize) {
-                    minimumPathSize = distance;
-                    minimumPathSourceIndex = sourceIndex;
-                    minimumPathFinalIndex = finalIndex;
-                }
-            }
-        }
-        System.out.println("Minimum path size: " + minimumPathSize);
-
-        // Loop through the predecessor array to construct the final verticalSeam array, where each seam[i] contains
-        // the index (x value) of the pixel to remove in the ith row
-        Integer[] minimumPathPredecessorArray = sourcePaths[minimumPathSourceIndex].predecessors;
         int[] verticalSeam = new int[height()];
-        int predecessor = minimumPathFinalIndex;
-        for (int i = verticalSeam.length - 1; i <= 0; i++) {
-            verticalSeam[i] = topSort[predecessor].getX();
-            predecessor = minimumPathPredecessorArray[predecessor];
-        }
-        System.out.println("Vertical seam constructed.");
 
-        return verticalSeam;
-    }
-
-    private PixelGraph loadPixelVertices() {
-        PixelGraph graph = new PixelGraph();
-        for (int x = 0; x < width(); x++) {
-            for (int y = 0; y < height(); y++) {
-                PixelVertex pv = new PixelVertex(x, y, energy(x, y));
-                graph.addVertex(pv);
-            }
+        double[][] dpArr = new double[height()][width()];
+        for (double[] row : dpArr) {
+            Arrays.fill(row, Double.MAX_VALUE);
         }
 
-        return graph;
-    }
-
-    private ShortestPathReturn singleSourceShortestPath(PixelVertex[] topSort, PixelGraph graph, int sourceIndex) {
-        // Create array to store distances from source to destination and initialize distances to
-        // 0 for source and infinity (Double.MAX_VALUE) for all following nodes
-        double[] distances = new double[topSort.length];
-        Arrays.fill(distances, Double.MAX_VALUE);
-        distances[sourceIndex] = 0;
-
-        // Create array to store INDEX OF predecessor in shortest path, and use to create int[] of indexes of
-        // path later; use Integer instead of int to initialize with null values
-        Integer[] predecessors = new Integer[topSort.length];
-        Arrays.fill(predecessors, null);
-
-        System.out.println("Distances and predecessors array created.");
-
-        for (int u = sourceIndex; u < topSort.length; u++) {
-            System.out.println("singleSourceShortestPath at vertex " + u);
-            PixelVertex pvu = topSort[u];
-            List<PixelVertex> adjVertices = graph.getAdjVertices().get(pvu);
-            System.out.println(adjVertices);
-            for (int v = 0; v < adjVertices.size(); v++) {
-                PixelVertex followingVertex = adjVertices.get(v);
-                // Treat edge weight as energy of following pixel (cost to move to the following pixel)
-                double edgeWeight = followingVertex.getWeight();
-                if (distances[u] + edgeWeight < distances[v]) {
-                    // Relax the edge since the path from the source to pv to the following vertex
-                    // is shorter than the currently stored shortest path
-                    System.out.println("Edge relaxed.");
-                    distances[v] = distances[u] + edgeWeight;
-                    predecessors[v] = u;
+        // Keep count of energy paths by adding minimum of upper three connecting pixels to
+        // current pixel energy
+        for (int y = 0; y < height(); y++) {
+            for (int x = 0; x < width(); x++) {
+                if (y == 0) {
+                    // Fill with pre-existing energy values
+                    dpArr[y][x] = energy(x, y);
+                    continue;
                 }
-            }
-        }
 
-        return new ShortestPathReturn(distances, predecessors);
-    }
-
-    class ShortestPathReturn {
-        double[] distances;
-        Integer[] predecessors;
-
-        ShortestPathReturn(double[] distances, Integer[] predecessors) {
-            this.distances = distances;
-            this.predecessors = predecessors;
-        }
-    }
-
-    private PixelGraph verticalPixelGraph() {
-        // Add vertices to graph
-        PixelGraph graph = loadPixelVertices();
-
-        // Add all connecting edges
-        graph.getAdjVertices().forEach((k, v) -> {
-            int x = k.getX(), y = k.getY();
-            if (y < height() - 1) {
-                graph.addEdge(k, new PixelVertex(x, y+1, energy(x, y+1)));
+                // Default from energy above, since we know above pixel exists
+                dpArr[y][x] = dpArr[y-1][x];
                 if (x > 0) {
-                    graph.addEdge(k, new PixelVertex(x-1, y+1, energy(x-1, y+1)));
+                    // Upper left pixel exists, so replace current value if it has smaller energy
+                    dpArr[y][x] = Math.min(dpArr[y][x], dpArr[y-1][x-1]);
                 }
                 if (x < width() - 1) {
-                    graph.addEdge(k, new PixelVertex(x+1, y+1, energy(x+1, y+1)));
+                    // Upper right pixel exists, so replace current value if it has smaller energy
+                    dpArr[y][x] = Math.min(dpArr[y][x], dpArr[y-1][x+1]);
                 }
-            }
-        });
-
-        return graph;
-    }
-
-    private PixelVertex[] verticalTopSort() {
-        // Since each pixel can only point to pixels below itself, arranging the pixels row by row essentially
-        // creates a topological sort of the pixel graph
-        PixelVertex[] topSort = new PixelVertex[width() * height()];
-        int x = 0;
-        int y = 0;
-        for (int i = 0; i < topSort.length; i++) {
-            topSort[i] = new PixelVertex(x, y, energy(x, y));
-
-            x++;
-            if (x >= width()) {
-                y++;
-                x = 0;
+                // Add energy of current pixel to keep track of total seam weight
+                dpArr[y][x] += energy(x, y);
             }
         }
 
-        return topSort;
+        // Find x value where minimum seam ends (in bottom row)
+        int minSeamX = 0;
+        double minEnergy = dpArr[height() - 1][0];
+        for (int x = 1; x < width(); x++) {
+            if (dpArr[height() - 1][x] < minEnergy) {
+                minSeamX = x;
+                minEnergy = dpArr[height() - 1][x];
+            }
+        }
+
+        // Traverse back up the array to find the indices of the pixels to remove
+        int x = minSeamX;
+        boolean hitRight = false, hitLeft = false;
+        for (int y = height() - 1; y >= 0; y--) {
+            // Check if edges have been reached
+            hitRight = hitRight || x == width() - 1;
+            hitLeft = hitLeft || x == 0;
+
+            // Add entry to vertical seam
+            verticalSeam[y] = x;
+
+            // Update seam column counter
+            if (y > 0) {
+                // Use pixel directly above as default
+                double currentEnergy = dpArr[y-1][x];
+                if (x > 0 && dpArr[y-1][x-1] < currentEnergy) {
+                    currentEnergy = dpArr[y-1][x-1];
+                    if (x < width() - 1 && dpArr[y-1][x+1] < currentEnergy) {
+                        // Upper right is the minimum
+                        x++;
+                    } else {
+                        // Upper left is the minimum
+                        x--;
+                    }
+                }
+            }
+        }
+
+        if (hitRight & hitLeft) {
+            // Seam is invalid since it spans horizontally
+            throw new IllegalArgumentException("Invalid vertical seam.");
+        }
+
+        return verticalSeam;
     }
 
     public void removeHorizontalSeam(int[] seam) {
