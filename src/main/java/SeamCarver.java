@@ -158,7 +158,19 @@ public class SeamCarver {
     }
 
     public void removeVerticalSeam(int[] seam) {
-        // TODO
+        Picture newPicture = new Picture(width() - 1, height());
+        for (int y = 0; y < height(); y++) {
+            for (int x = 0; x < width(); x++) {
+                if (seam[y] == x) {
+                    x++;
+                    continue;
+                }
+
+                newPicture.setRGB(x, y, picture.getRGB(x, y));
+            }
+        }
+
+        picture = newPicture;
     }
 
 

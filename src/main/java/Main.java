@@ -9,6 +9,8 @@ public class Main {
         System.out.println(carver.width() * carver.height());
 
         System.out.println(Arrays.toString(carver.findVerticalSeam()));
+        carver.removeVerticalSeam(carver.findVerticalSeam());
+        carver.picture().show();
 
     }
 }
