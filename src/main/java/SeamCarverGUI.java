@@ -2,16 +2,23 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class SeamCarverGUI extends JFrame implements ActionListener {
 
     private final SeamCarver carver;
 
     public static void main(String[] args) {
-        String filename = "landscape2.jpg";
-        SeamCarverGUI gui = new SeamCarverGUI(filename);
-        gui.setVisible(true);
-        gui.repaint();
+        if (args.length != 1) {
+            System.out.println("Usage: java -jar SeamCarving.jar <path/to/image>");
+            System.exit(1);
+        } else {
+            String filename = args[0];
+            SeamCarverGUI gui = new SeamCarverGUI(filename);
+            gui.setVisible(true);
+            gui.repaint();
+        }
     }
 
     public SeamCarverGUI(String filename) {
@@ -41,7 +48,7 @@ public class SeamCarverGUI extends JFrame implements ActionListener {
             }
         });  // To respond to resize events
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        this.setTitle(filename);
+        this.setTitle(Paths.get(filename).getFileName().toString()); // Get just filename if longer path given
         this.setResizable(true);
         this.pack();
     }
@@ -60,13 +67,11 @@ public class SeamCarverGUI extends JFrame implements ActionListener {
 
         if (newSize.width < carver.width()) {
             // Remove vertical seams to compensate
-            System.out.println("Need to remove vertical seams.");
             for (int i = 0; i < carver.width() - newSize.width; i++) {
                 carver.removeVerticalSeam(carver.findVerticalSeam());
             }
         }
         if (newSize.height < carver.height()) {
-            System.out.println("Need to remove horizontal seams.");
             // Remove horizontal seams to compensate
             for (int i = 0; i < carver.height() - newSize.height; i++) {
                 carver.removeHorizontalSeam(carver.findHorizontalSeam());
