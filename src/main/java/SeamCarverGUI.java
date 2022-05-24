@@ -15,9 +15,14 @@ public class SeamCarverGUI extends JFrame implements ActionListener {
             System.exit(1);
         } else {
             String filename = args[0];
-            SeamCarverGUI gui = new SeamCarverGUI(filename);
-            gui.setVisible(true);
-            gui.repaint();
+            try {
+                SeamCarverGUI gui = new SeamCarverGUI(filename);
+                gui.setVisible(true);
+                gui.repaint();
+            } catch (IllegalArgumentException e) {
+                System.out.println("Unable to open file '" + filename + "'");
+                System.exit(1);
+            }
         }
     }
 
