@@ -1,6 +1,6 @@
 # SeamCarving
 
-A program that intelligently resize images in an interactive GUI by using a seam carving algorithm. This 
+A program that intelligently resizes images in an interactive GUI by using a seam carving algorithm. This 
 project was completed to the specifications of [Princeton's CS Seam Carving assignment](https://www.cs.princeton.edu/courses/archive/fall14/cos226/assignments/seamCarving.html).
 
 Images loaded in the program can be resized by resizing the GUI window, then can be saved using the File > Save dialog.
