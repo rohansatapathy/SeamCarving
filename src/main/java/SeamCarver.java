@@ -69,8 +69,83 @@ public class SeamCarver {
     }
 
     public int[] findHorizontalSeam() {
-        // TODO
-        return new int[0];
+
+        int[] horizontalSeam = new int[width()];
+
+        double[][] dpArr = new double[height()][width()];
+        for (double[] row : dpArr) {
+            Arrays.fill(row, Double.MAX_VALUE);
+        }
+
+        // Keep count of energy paths by adding minimum of left three connecting pixels to
+        // current pixel energy
+        for (int x = 0; x < width(); x++) {
+            for (int y = 0; y < height(); y++) {
+                if (x == 0) {
+                    // Fill with pre-existing energy values
+                    dpArr[y][x] = energy(x, y);
+                    continue;
+                }
+
+                // Default from energy to left, since we know left pixel exists
+                dpArr[y][x] = dpArr[y][x-1];
+                if (y > 0) {
+                    // Upper left pixel exists, so replace current value if it has smaller energy
+                    dpArr[y][x] = Math.min(dpArr[y][x], dpArr[y-1][x-1]);
+                }
+                if (y < height() - 1) {
+                    // Bottom left pixel exists, so replace current value if it has smaller energy
+                    dpArr[y][x] = Math.min(dpArr[y][x], dpArr[y+1][x-1]);
+                }
+                // Add energy of current pixel to keep track of total seam weight
+                dpArr[y][x] += energy(x, y);
+            }
+        }
+
+        // Find y value where minimum seam ends (in right column)
+        int minSeamY = 0;
+        double minEnergy = dpArr[0][width() - 1];
+        for (int y = 1; y < height(); y++) {
+            if (dpArr[y][width() - 1] < minEnergy) {
+                minSeamY = y;
+                minEnergy = dpArr[y][width()-1];
+            }
+        }
+
+        // Traverse back up the array to find the indices of the pixels to remove
+        int y = minSeamY;
+        boolean hitTop = false, hitBottom = false;
+        for (int x = width() - 1; x >= 0; x--) {
+            // Check if edges have been reached
+            hitTop = hitTop || y == 0;
+            hitBottom = hitBottom || y == height() - 1;
+
+            // Add entry to vertical seam
+            horizontalSeam[x] = y;
+
+            // Update seam column counter
+            if (x > 0) {
+                // Use pixel directly to left as default
+                double currentEnergy = dpArr[y][x-1];
+                if (y > 0 && dpArr[y-1][x-1] < currentEnergy) {
+                    currentEnergy = dpArr[y-1][x-1];
+                    if (y < height() - 1 && dpArr[y+1][x-1] < currentEnergy) {
+                        // Lower left is the minimum
+                        y++;
+                    } else {
+                        // Upper left is the minimum
+                        y--;
+                    }
+                }
+            }
+        }
+
+        if (hitTop & hitBottom) {
+            // Seam is invalid since it spans vertically
+            throw new IllegalArgumentException("Invalid horizontal seam.");
+        }
+
+        return horizontalSeam;
     }
 
     public int[] findVerticalSeam() {
@@ -154,19 +229,40 @@ public class SeamCarver {
     }
 
     public void removeHorizontalSeam(int[] seam) {
-        // TODO
+        Picture newPicture = new Picture(width(), height() - 1);
+        for (int x = 0; x < width(); x++) {
+            boolean seamReached = false;
+            for (int y = 0; y < height(); y++) {
+                if (seam[x] == y) {
+                    seamReached = true;
+                    continue;
+                }
+                if (seamReached) {
+                    newPicture.setRGB(x, y-1, picture.getRGB(x, y));
+                } else {
+                    newPicture.setRGB(x, y, picture.getRGB(x, y));
+                }
+
+            }
+        }
+
+        picture = newPicture;
     }
 
     public void removeVerticalSeam(int[] seam) {
         Picture newPicture = new Picture(width() - 1, height());
         for (int y = 0; y < height(); y++) {
+            boolean seamReached = false;
             for (int x = 0; x < width(); x++) {
                 if (seam[y] == x) {
-                    x++;
+                    seamReached = true;
                     continue;
                 }
-
-                newPicture.setRGB(x, y, picture.getRGB(x, y));
+                if (seamReached) {
+                    newPicture.setRGB(x-1, y, picture.getRGB(x, y));
+                } else {
+                    newPicture.setRGB(x, y, picture.getRGB(x, y));
+                }
             }
         }
 
